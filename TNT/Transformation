@@ -1,0 +1,14 @@
+let
+    Source = Excel.CurrentWorkbook(){[Name="Query_Table"]}[Content],
+    #"Removed Columns1" = Table.RemoveColumns(Source,{"ShipDate.Year", "ShipDate.Month", "ShipDate.Day"}),
+    #"Removed Columns" = Table.RemoveColumns(#"Removed Columns1",{"Process?", "Payload", "Error"}),
+    #"Parsed JSON" = Table.TransformColumns(#"Removed Columns",{{"Output", Json.Document}}),
+    #"Expanded Output" = Table.ExpandRecordColumn(#"Parsed JSON", "Output", {"errors", "quotes"}, {"errors", "quotes"}),
+    #"Expanded Error" = Table.TransformColumns(#"Expanded Output",{{"errors",each try Combiner.CombineTextByDelimiter(";")(List.Transform(_,each [errorMessage])) otherwise null, type text}}),
+    #"Expanded quotes" = Table.ExpandListColumn(#"Expanded Error", "quotes"),
+    #"Expanded quotes1" = Table.ExpandRecordColumn(#"Expanded quotes", "quotes", {"product", "transitTimes", "price"}, {"product", "transitTimes", "price"}),
+    #"Expanded product" = Table.ExpandRecordColumn(#"Expanded quotes1", "product", {"id", "name"}, {"id", "name"}),
+    #"Expanded transitTimes" = Table.ExpandRecordColumn(#"Expanded product", "transitTimes", {"deliveryDate", "collectionDate", "icaStartTime", "icaEndTime", "lastCallTime", "transitDaysExcludingHolidays", "collectionDepotId", "deliveryDepotId"}, {"deliveryDate", "collectionDate", "icaStartTime", "icaEndTime", "lastCallTime", "transitDaysExcludingHolidays", "collectionDepotId", "deliveryDepotId"}),
+    #"Expanded price" = Table.ExpandRecordColumn(#"Expanded transitTimes", "price", {"vat", "totalExclVat", "totalInclVat", "currencyCode"}, {"vat", "totalExclVat", "totalInclVat", "currencyCode"})
+in
+    #"Expanded price"
