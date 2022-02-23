@@ -1,0 +1,25 @@
+let
+    Source = Origin,
+    #"Added Custom" = Table.AddColumn(Source, "Custom", each Destination),
+    #"Expanded Custom" = Table.ExpandTableColumn(#"Added Custom", "Custom", {"Country Code", "City", "Postal Code"}, {"Destination.Country Code", "Destination.City", "Destination.Postal Code"}),
+    #"Added Custom5" = Table.AddColumn(#"Expanded Custom", "Domestic", each [Country Code]=[Destination.Country Code]),
+    #"Filtered Rows1" = Table.SelectRows(#"Added Custom5", each ([Domestic] = false)),
+    #"Removed Columns2" = Table.RemoveColumns(#"Filtered Rows1",{"Domestic"}),
+    #"Added Custom1" = Table.AddColumn(#"Removed Columns2", "Custom", each ShipDate),
+    #"Expanded Custom1" = Table.ExpandTableColumn(#"Added Custom1", "Custom", {"Year", "Month", "Day"}, {"ShipDate.Year", "ShipDate.Month", "ShipDate.Day"}),
+    #"Added Custom2" = Table.AddColumn(#"Expanded Custom1", "Custom", each ShipType),
+    #"Expanded Custom2" = Table.ExpandTableColumn(#"Added Custom2", "Custom", {"Declared Value", "Currency", "Packaging Type", "Weight", "Unit (LB/KG)", "Commodity"}, {"ShipType.Declared Value", "ShipType.Currency", "ShipType.Packaging Type", "ShipType.Weight", "ShipType.Unit (LB/KG)", "ShipType.Commodity"}),
+    #"Renamed Columns" = Table.RenameColumns(#"Expanded Custom2",{{"Country Code", "Origin.Country"}, {"City", "Origin.City"}, {"Postal Code", "Origin.Postal"}, {"Destination.Country Code", "Destination.Country"}, {"Destination.Postal Code", "Destination.Postal"}, {"ShipType.Declared Value", "ShipType.Value"}, {"ShipType.Packaging Type", "ShipType.Packaging"}, {"ShipType.Unit (LB/KG)", "ShipType.WUnit"}}),
+    #"Changed Type" = Table.TransformColumnTypes(#"Renamed Columns",{{"Destination.Country", type text}, {"Destination.Postal", type text}, {"ShipDate.Year", type text}, {"ShipDate.Month", type text}, {"ShipDate.Day", type text}, {"ShipType.Currency", type text}, {"ShipType.Packaging", type text}, {"ShipType.WUnit", type text}, {"ShipType.Commodity", type text}}),
+    #"Added Custom3" = Table.AddColumn(#"Changed Type", "Process?", each null),
+    #"Replaced Value" = Table.ReplaceValue(#"Added Custom3",null,"",Replacer.ReplaceValue,{"Origin.Postal"}),
+    #"Replaced Value1" = Table.ReplaceValue(#"Replaced Value",null,"",Replacer.ReplaceValue,{"Destination.Postal"}),
+    #"Added Custom4" = Table.AddColumn(#"Replaced Value1", "Payload", each Text.FromBinary(Json.FromValue(
+[
+ rateRequestControlParameters=[returnTransitTimes=true],
+ requestedShipment=[shipper=[address=[city=[Origin.City],countryCode=[Origin.Country],postalCode=[Origin.Postal]]],recipients={[address=[city=[Destination.City],countryCode=[Destination.Country],postalCode=[Destination.Postal],residential=false]]},shipTimestamp=[ShipDate.Year]&"-"&[ShipDate.Month]&"-"&[ShipDate.Day],pickupType="CONTACT_FEDEX_TO_SCHEDULE",shippingChargesPayment=[payor=[responsibleParty=[address=[countryCode=[Origin.Country]]]]],requestedPackageLineItems={[groupPackageCount=1,physicalPackaging=[ShipType.Packaging],insuredValue=[currency=[ShipType.Currency],amount=[ShipType.Value]],weight=[units=[ShipType.WUnit],value=[ShipType.Weight]]]},preferredCurrency=[ShipType.Currency],customsClearanceDetail=[commodities={[name=[ShipType.Commodity],numberOfPieces=1,weight=[units=[ShipType.WUnit],value=[ShipType.Weight]],quantity=1,customsValue=[currency=[ShipType.Currency],amount=[ShipType.Value]]]}]],carrierCodes={"FDXG","FDXE"}
+]
+))),
+    #"Reordered Columns" = Table.ReorderColumns(#"Added Custom4",{"Process?", "Origin.Country", "Origin.City", "Origin.Postal", "Destination.Country", "Destination.City", "Destination.Postal", "ShipDate.Year", "ShipDate.Month", "ShipDate.Day", "ShipType.Value", "ShipType.Currency", "ShipType.Packaging", "ShipType.Weight", "ShipType.WUnit", "ShipType.Commodity", "Payload"})
+in
+    #"Reordered Columns"
