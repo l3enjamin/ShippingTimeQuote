@@ -1,0 +1,28 @@
+let
+    Source = Origin,
+    #"Renamed Columns" = Table.RenameColumns(Source,{{"Country Code", "Origin.Country"}, {"City", "Origin.City"}, {"Postal Code", "Origin.Postal"}}),
+    #"Added Custom" = Table.AddColumn(#"Renamed Columns", "Dest", each Destination),
+    #"Expanded Custom" = Table.ExpandTableColumn(#"Added Custom", "Dest", {"Country Code", "City", "Postal Code"}, {"Dest.Country", "Dest.City", "Dest.Postal"}),
+    #"Added Custom7" = Table.AddColumn(#"Expanded Custom", "Domestic", each if Record.Field(Table.First(#"Settings"),"Domestic")="Yes" then 1=0 else [Origin.Country]=[Dest.Country]),
+    #"Filtered Rows" = Table.SelectRows(#"Added Custom7", each ([Domestic] = false)),
+    #"Removed Columns1" = Table.RemoveColumns(#"Filtered Rows",{"Domestic"}),
+    #"Added Custom1" = Table.AddColumn(#"Removed Columns1", "ShipDate", each ShipDate),
+    #"Expanded Custom1" = Table.ExpandTableColumn(#"Added Custom1", "ShipDate", {"Year", "Month", "Day"}, {"ShipDate.Year", "ShipDate.Month", "ShipDate.Day"}),
+    #"Added Custom2" = Table.AddColumn(#"Expanded Custom1", "ShipType", each ShipType),
+    #"Expanded ShipType" = Table.ExpandTableColumn(#"Added Custom2", "ShipType", {"Product Type", "Package Type", "Weight#(lf)(KG)", "Width#(lf)(M)", "Length#(lf)(M)", "Height#(lf)(M)", "Declared Value","Currency"}, {"ShipType.ProductType", "ShipType.PackageType", "ShipType.Weight", "ShipType.Width", "ShipType.Length", "ShipType.Height", "ShipType.Value","ShipType.Currency"}),
+    #"Added Custom3" = Table.AddColumn(#"Expanded ShipType", "Process?", each null),
+    #"Added Custom5" = Table.AddColumn(#"Added Custom3", "collection", each if [Origin.Postal]<>null then [city=[Origin.City],postCode=[Origin.Postal],countryCode=[Origin.Country]] else [city=[Origin.City],countryCode=[Origin.Country]]),
+    #"Added Custom6" = Table.AddColumn(#"Added Custom5", "delivery", each if [Dest.Postal]<>null then [city=[Dest.City],postCode=[Dest.Postal],countryCode=[Dest.Country]] else [city=[Dest.City],countryCode=[Dest.Country]]),
+    #"Added Custom8" = Table.AddColumn(#"Added Custom6", "paidBy", each if [Origin.Country]="AU" or [Origin.Country]="NZ" or  [Origin.Country]="BR" or [Origin.Country]="BD" or [Origin.Country]="LK" or [Origin.Country]="CA" or [Origin.Country]="US" then "Receiver" else "Sender"),
+    #"Added Custom4" = Table.AddColumn(#"Added Custom8", "Payload", each Text.FromBinary(Json.FromValue(
+[
+ locale="en", 
+ collection=[collection],
+ delivery=[delivery],
+ shipment=[items={[length=[ShipType.Length],width=[ShipType.Width],height=[ShipType.Height],weight=[ShipType.Weight],quantity=1,packageType=[ShipType.PackageType],productType=[ShipType.ProductType]]},value=[currencyCode=[ShipType.Currency],amount=[ShipType.Value]],collectionDate=#date([ShipDate.Year],[ShipDate.Month],[ShipDate.Day]),paidBy=[paidBy],createdBy=[paidBy]]
+]
+))),
+    #"Removed Columns" = Table.RemoveColumns(#"Added Custom4",{"collection", "delivery", "paidBy"}),
+    #"Reordered Columns" = Table.ReorderColumns(#"Removed Columns",{"Process?", "Origin.Country", "Origin.City", "Origin.Postal", "Dest.Country", "Dest.City", "Dest.Postal", "ShipDate.Year", "ShipDate.Month", "ShipDate.Day", "ShipType.ProductType", "ShipType.PackageType", "ShipType.Weight", "ShipType.Width", "ShipType.Length", "ShipType.Height", "Payload"})
+in
+    #"Reordered Columns"
