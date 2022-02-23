@@ -1,0 +1,19 @@
+let
+    Source = Excel.CurrentWorkbook(){[Name="Output"]}[Content],
+    #"Changed Type" = Table.TransformColumnTypes(Source,{{"Process?", type any}, {"Origin.Country", type text}, {"Origin.City", type text}, {"Origin.Postal", type text}, {"Dest.Country", type text}, {"Dest.City", type text}, {"Dest.Postal", type text}, {"ShipDate.Year", Int64.Type}, {"ShipDate.Month", Int64.Type}, {"ShipDate.Day", Int64.Type}, {"ShipType.Dutiable", type text}, {"ShipType.Value", Int64.Type}, {"ShipType.Currency", type text}, {"ShipType.Weight", Int64.Type}, {"ShipType.WUnit", type text}, {"ShipType.Width", Int64.Type}, {"ShipType.Length", Int64.Type}, {"ShipType.Height", Int64.Type}, {"ShipType.DUnit", type text}, {"URL", type text}}),
+    #"Filtered Rows" = Table.SelectRows(#"Changed Type", each ([#"Process?"] = "Y")),
+    #"Added Custom" = Table.AddColumn(#"Filtered Rows", "Result", each Text.FromBinary(Web.Contents([URL]))),
+    #"Removed Columns" = Table.RemoveColumns(#"Added Custom",{"URL", "Process?"}),
+    #"Parsed XML" = Table.TransformColumns(#"Removed Columns",{{"Result", Xml.Tables}}),
+    #"Expanded Result" = Table.ExpandTableColumn(#"Parsed XML", "Result", {"quotationList", "errorCode", "errorMessage", "errorTitle"}, {"Result.quotationList", "Result.errorCode", "Result.errorMessage", "Result.errorTitle"}),
+    #"Replaced Value" = Table.ReplaceValue(#"Expanded Result","",null,Replacer.ReplaceValue,{"Result.quotationList"}),
+    #"Expanded Result.quotationList" = Table.ExpandTableColumn(#"Replaced Value", "Result.quotationList", {"quotation"}, {"Result.quotationList.quotation"}),
+    #"Expanded Result.quotationList.quotation" = Table.ExpandTableColumn(#"Expanded Result.quotationList", "Result.quotationList.quotation", {"estDeliv", "estTotPrice", "estTotPriceNoTax", "globalProdCd", "latBkg", "latPckp", "pickupWindowEnd", "prodNm", "totTax", "volWgt"}, {"Result.quotationList.quotation.estDeliv", "TotalPrice", "PriceExTax", "ProductID", "CallCutOff", "LastPickUp", "SameDayCutOff", "Product", "TotalTax", "VolWgt"}),
+    #"Split Column by Delimiter" = Table.SplitColumn(#"Expanded Result.quotationList.quotation", "Result.quotationList.quotation.estDeliv", Splitter.SplitTextByEachDelimiter({", by "}, QuoteStyle.Csv, true), {"DelDate", "DelTime"}),
+    #"Changed Type1" = Table.TransformColumnTypes(#"Split Column by Delimiter",{{"DelDate", type date}, {"DelTime", type text}}),
+    #"Replaced Value1" = Table.ReplaceValue(#"Changed Type1","+"," ",Replacer.ReplaceText,{"Origin.City", "Dest.City"}),
+    #"Added Custom2" = Table.AddColumn(#"Replaced Value1", "TT", each [DelDate]-#date([ShipDate.Year],[ShipDate.Month],[ShipDate.Day])),
+    #"Changed Type2" = Table.TransformColumnTypes(#"Added Custom2",{{"TT", Int64.Type}}),
+    #"Reordered Columns" = Table.ReorderColumns(#"Changed Type2",{"Origin.Country", "Origin.City", "Origin.Postal", "Dest.Country", "Dest.City", "Dest.Postal", "ShipDate.Year", "ShipDate.Month", "ShipDate.Day", "ShipType.Dutiable", "ShipType.Value", "ShipType.Currency", "ShipType.Weight", "ShipType.WUnit", "VolWgt", "ShipType.Width", "ShipType.Length", "ShipType.Height", "ShipType.DUnit", "ProductID", "Product", "CallCutOff", "LastPickUp", "SameDayCutOff", "DelDate", "DelTime", "TT", "TotalPrice", "PriceExTax", "TotalTax", "Result.errorCode", "Result.errorMessage", "Result.errorTitle"})
+in
+    #"Reordered Columns"
