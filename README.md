@@ -14,7 +14,11 @@ Please note the following:
 2. Different carriers may have different city name and postal code format. Please test with the corresponsding website to see if your address(es) can be accepted.
 
 Data source:
+
 UPS - https://wwwapps.ups.com/time (HTML)
+
 FedEx - https://www.fedex.com/en-us/online/rating.html (JSON)
+
 DHL - https://dct.dhl.com/ (XML)
+
 TNT - https://www.tnt.com/express/en_sg/site/get-quote.html (JSON)
