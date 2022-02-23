@@ -1,0 +1,19 @@
+let
+    Source = Origin,
+    #"Renamed Columns" = Table.RenameColumns(Source,{{"Country Code", "Origin.Country"}, {"City", "Origin.City"}, {"Postal Code", "Origin.Postal"}}),
+    #"Added Custom" = Table.AddColumn(#"Renamed Columns", "Dest", each Destination),
+    #"Expanded Custom" = Table.ExpandTableColumn(#"Added Custom", "Dest", {"Country Code", "City", "Postal Code"}, {"Dest.Country", "Dest.City", "Dest.Postal"}),
+    #"Added Custom1" = Table.AddColumn(#"Expanded Custom", "ShipDate", each ShipDate),
+    #"Expanded Custom1" = Table.ExpandTableColumn(#"Added Custom1", "ShipDate", {"Year", "Month", "Day"}, {"ShipDate.Year", "ShipDate.Month", "ShipDate.Day"}),
+    #"Added Custom7" = Table.AddColumn(#"Expanded Custom1", "Domestic", each [Origin.Country]=[Dest.Country]),
+    #"Filtered Rows" = Table.SelectRows(#"Added Custom7", each ([Domestic] = false)),
+    #"Removed Columns" = Table.RemoveColumns(#"Filtered Rows",{"Domestic"}),
+    #"Added Custom2" = Table.AddColumn(#"Removed Columns", "ShipType", each ShipType),
+    #"Expanded ShipType" = Table.ExpandTableColumn(#"Added Custom2", "ShipType", {"Dutiable (Y/N)", "Declared Value", "Currency", "Weight", "Unit#(lf)(lb/kg)", "Width", "Length", "Height", "Unit#(lf)(in/cm)"}, {"ShipType.Dutiable", "ShipType.Value", "ShipType.Currency", "ShipType.Weight", "ShipType.WUnit", "ShipType.Width", "ShipType.Length", "ShipType.Height", "ShipType.DUnit"}),
+    #"Added Custom3" = Table.AddColumn(#"Expanded ShipType", "Process?", each null),
+    #"Reordered Columns" = Table.ReorderColumns(#"Added Custom3",{"Process?", "Origin.Country", "Origin.City", "Origin.Postal", "Dest.Country", "Dest.City", "Dest.Postal", "ShipDate.Year", "ShipDate.Month", "ShipDate.Day", "ShipType.Dutiable", "ShipType.Value", "ShipType.Currency", "ShipType.Weight", "ShipType.WUnit", "ShipType.Width", "ShipType.Length", "ShipType.Height", "ShipType.DUnit"}),
+    #"Replaced Value2" = Table.ReplaceValue(#"Reordered Columns",null,"",Replacer.ReplaceValue,{"Origin.Postal"}),
+    #"Replaced Value3" = Table.ReplaceValue(#"Replaced Value2",null,"",Replacer.ReplaceValue,{"Dest.Postal"}),
+    #"Added Custom4" = Table.AddColumn(#"Replaced Value3", "URL", each "http://dct.dhl.com/data/quotation/?dtbl="&[ShipType.Dutiable]&"&declVal="& Number.ToText([ShipType.Value]) &"&declValCur="&[ShipType.Currency]&"&wgtUom="&[ShipType.WUnit]&"&dimUom="&[ShipType.DUnit]&"&noPce=1&wgt0="&Number.ToText([ShipType.Weight])&"&w0="&Number.ToText([ShipType.Width])&"&l0="&Number.ToText([ShipType.Length])&"&h0="&Number.ToText([ShipType.Height])&"&shpDate="&Number.ToText([ShipDate.Year])&"-"&[ShipDate.Month]&"-"&[ShipDate.Day]&"&orgCtry="&[Origin.Country]&"&orgCity="&[Origin.City]&"&orgSub=&orgZip="&[Origin.Postal]&"&dstCtry="&[Dest.Country]&"&dstCity="&[Dest.City]&"&dstSub=&dstZip="&[Dest.Postal])
+in
+    #"Added Custom4"
