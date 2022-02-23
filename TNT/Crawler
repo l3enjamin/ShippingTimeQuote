@@ -1,0 +1,75 @@
+Sub RefreshOutput()
+
+    Dim mbResult As Integer
+    mbResult = MsgBox("Will override the Query table." & vbCrLf & "Are you sure?", vbOKCancel)
+    
+    Select Case mbResult
+        Case vbOK
+            ActiveWorkbook.Connections("Query - Query Table").OLEDBConnection.Refresh
+        Case vbCancel
+            Exit Sub
+    End Select
+    
+End Sub
+
+Sub RefreshResult()
+
+    Dim mbResult As Integer
+    mbResult = MsgBox("Will override the Output table." & vbCrLf & "Are you sure?", vbOKCancel)
+    
+    Select Case mbResult
+        Case vbOK
+            ActiveWorkbook.Connections("Query - Output").OLEDBConnection.Refresh
+        Case vbCancel
+            Exit Sub
+    End Select
+    
+End Sub
+
+Sub GetData()
+
+'Must have the Microsoft HTML Object Library reference enabled
+Dim row As Integer
+Dim rows As Integer
+Dim svc As Integer
+Dim result As String
+Dim payload As String
+
+rows = Cells(1, 2).Value
+
+For row = 3 To rows + 2
+
+    If Cells(row, 1).Value = "Y" Then
+
+        Range("S1") = "Processing: " & row - 2 & "/" & rows
+        Range("T" & row).Show
+        
+        payload = Cells(row, 19).Value
+        
+        With CreateObject("MSXML2.XMLHTTP")
+            .Open "POST", "https://mytnt.tnt.com/service/quote-service/v2/quotes/products", True
+            '.setRequestHeader "Authorization", "Basic dG50OmRlbW9fb3JfZGll"
+            .setRequestHeader "Content-Type", "application/json; charset=utf-8"
+            .Send payload
+            Do While .readyState <> 4
+                DoEvents
+            Loop
+            Cells(row, 20) = .responseText
+        End With
+        
+        Cells(row, 1) = ""
+        
+        If row Mod 100 = 0 Then
+            ActiveWorkbook.Save
+        End If
+    
+    End If
+    
+    DoEvents
+    
+Next row
+
+Range("S1") = ""
+MsgBox "Done."
+
+End Sub
