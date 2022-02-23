@@ -1,0 +1,108 @@
+Sub GenURL()
+    Worksheets("Query Table").ListObjects("Output").ListColumns("URL").DataBodyRange.FormulaR1C1 = "=""https://wwwapps.ups.com/ctc/results?shipDate=""&[@[ShipDate.Year]]&""-""&[@[ShipDate.Month]]&""-""&[@[ShipDate.Day]]&""&quoteType=transitTimeOnly&origCountry=""&[@[Origin.Country]]&""&origCity=""&[@[Origin.City]]&""&origPostalCode=""&[@[Origin.Postal]]&""&shipmentDocsPallet=""&[@[ShipType.Code]]&""&destCountry=""&[@[Dest.Country]]&""&destPostalCode=""&[@[Dest.Postal]]&""&destCity=""&[@[Dest.City]]&""&currencyScalar=""&[@[ShipType.Value]]&""&currencyUnits=""&[@[ShipType.Currency]]&""&weight=""&[@[ShipType.Weight]]&""&weightType=""&[@[ShipType.Unit]]"
+End Sub
+Sub RefreshOutput()
+
+    Dim mbResult As Integer
+    mbResult = MsgBox("Will override the Output table." & vbCrLf & "Are you sure?", vbOKCancel)
+    
+    Select Case mbResult
+        Case vbOK
+            ActiveWorkbook.Connections("Query - Output").OLEDBConnection.Refresh
+        Case vbCancel
+            Exit Sub
+    End Select
+    
+End Sub
+
+Sub RefreshResult()
+
+    Dim mbResult As Integer
+    mbResult = MsgBox("Will override the Result table." & vbCrLf & "Are you sure?", vbOKCancel)
+    
+    Select Case mbResult
+        Case vbOK
+            ActiveWorkbook.Connections("Query - Result").OLEDBConnection.Refresh
+        Case vbCancel
+            Exit Sub
+    End Select
+    
+End Sub
+
+Sub GetData()
+
+'Must have the Microsoft HTML Object Library reference enabled
+Dim url As String
+Dim row As Integer
+Dim rows As Integer
+Dim doc As MSHTML.HTMLDocument
+Dim svc As Integer
+Dim result As String
+Dim error As Integer
+
+rows = Worksheets("Query Table").Cells(1, 2).Value
+error = 0
+
+For row = 3 To rows + 2
+
+    If Worksheets("Query Table").Cells(row, 1).Value = "Y" Then
+
+        Worksheets("Query Table").Range("P1") = "Processing:" & row - 2 & "/" & rows
+        Worksheets("Query Table").Range("Q" & row).Show
+    
+        url = Worksheets("Query Table").Cells(row, 16).Value
+        
+        With CreateObject("MSXML2.XMLHTTP")
+            .Open "GET", url, True
+            .Send
+            Do While .readyState <> 4
+                DoEvents
+            Loop
+            Set doc = New MSHTML.HTMLDocument
+            doc.body.innerHTML = .responseText
+        End With
+        
+        svc = 0
+        result = ""
+        
+        For Each HTMLElement In doc.getElementsByTagName("p")
+            If Left(HTMLElement.innerText, 3) = "UPS" Then
+                If svc > 0 Then
+                   Worksheets("Query Table").Cells(row, 16 + svc) = result
+                End If
+                svc = svc + 1
+                result = HTMLElement.innerText
+            Else
+                result = result & "|" & Replace(HTMLElement.innerText, vbCrLf, "")
+            End If
+        Next
+        
+        If result = "" Then
+            error = error + 1
+            If doc.getElementsByTagName("tr").Length > 0 Then
+                Worksheets("Query Table").Cells(row, 17) = "ERROR: " & doc.getElementsByTagName("tr")(9).innerText
+            Else
+                Dim errorsJSONpos As Integer
+                errorsJSONpos = InStr(doc.body.innerHTML, "errorsJSON")
+                Worksheets("Query Table").Cells(row, 17) = "ERROR: " & Mid(doc.body.innerHTML, errorsJSONpos + 15, InStr(errorsJSONpos, doc.body.innerHTML, ":") - errorsJSONpos - 16)
+            End If
+        Else
+            Worksheets("Query Table").Cells(row, 16 + svc) = result
+        End If
+        
+        Worksheets("Query Table").Cells(row, 1) = ""
+        
+        If row Mod 100 = 0 Then
+            ActiveWorkbook.Save
+        End If
+        
+        DoEvents
+    
+    End If
+    
+Next row
+
+Worksheets("Query Table").Range("P1") = ""
+MsgBox "Done. Number of error: " & error
+
+End Sub
