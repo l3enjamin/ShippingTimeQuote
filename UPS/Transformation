@@ -1,0 +1,25 @@
+let
+    Source = Excel.CurrentWorkbook(){[Name="Output"]}[Content],
+    #"Changed Type" = Table.TransformColumnTypes(Source,{{"Origin.Country", type text}, {"Origin.City", type text}, {"Origin.Postal", type text}, {"Dest.Country", type text}, {"Dest.City", type text}, {"Dest.Postal", type text}, {"ShipDate.Year", Int64.Type}, {"ShipDate.Month", Int64.Type}, {"ShipDate.Day", Int64.Type}, {"ShipType.Value", Int64.Type}, {"ShipType.Currency", type text}, {"ShipType.Unit", type text}, {"ShipType.Weight", type number}, {"URL", type text}, {"Svc1", type text}, {"Svc2", type text}, {"Svc3", type text}, {"Svc4", type text}, {"Svc5", type text}, {"Svc6", type text}, {"Svc7", type text}, {"Svc8", type text}, {"Svc9", type text}, {"Svc10", type text}}),
+    #"Removed Columns" = Table.RemoveColumns(#"Changed Type",{"URL"}),
+    #"Unpivoted Columns" = Table.UnpivotOtherColumns(#"Removed Columns", {"Origin.Country", "Origin.City", "Origin.Postal", "Dest.Country", "Dest.City", "Dest.Postal", "ShipDate.Year", "ShipDate.Month", "ShipDate.Day", "ShipType.Value", "ShipType.Currency", "ShipType.Unit", "ShipType.Weight","ShipType.Code"}, "Attribute", "Value"),
+    #"Removed Columns1" = Table.RemoveColumns(#"Unpivoted Columns",{"Attribute"}),
+    #"Replaced Value" = Table.ReplaceValue(#"Removed Columns1"," 1:",":|",Replacer.ReplaceText,{"Value"}),
+    #"Replaced Value3" = Table.ReplaceValue(#"Replaced Value"," 2:",":|",Replacer.ReplaceText,{"Value"}),
+    #"Split Column by Delimiter" = Table.SplitColumn(#"Replaced Value3", "Value", Splitter.SplitTextByDelimiter("|", QuoteStyle.Csv), {"Value.1", "Value.2", "Value.3", "Value.4", "Value.5", "Value.6", "Value.7", "Value.8", "Value.9", "Value.10"}),
+    #"Changed Type1" = Table.TransformColumnTypes(#"Split Column by Delimiter",{{"Value.1", type text}, {"Value.2", type text}, {"Value.3", type text}, {"Value.4", type date}, {"Value.5", type text}, {"Value.6", type text}, {"Value.7", type text}, {"Value.8", type text}, {"Value.9", type date}, {"Value.10", type text}}),
+    #"Removed Columns2" = Table.RemoveColumns(#"Changed Type1",{"ShipDate.Year", "ShipDate.Month", "ShipDate.Day", "Value.2", "Value.7", "Value.10", "Value.5"}),
+    #"Trimmed Text" = Table.TransformColumns(Table.TransformColumnTypes(#"Removed Columns2", {{"Value.4", type text}, {"Value.9", type text}}, "en-HK"),{{"Value.1", Text.Trim, type text}, {"Value.3", Text.Trim, type text}, {"Value.4", Text.Trim, type text}, {"Value.6", Text.Trim, type text}, {"Value.8", Text.Trim, type text}, {"Value.9", Text.Trim, type text}}),
+    #"Split Column by Delimiter1" = Table.SplitColumn(#"Trimmed Text", "Value.3", Splitter.SplitTextByEachDelimiter({" "}, QuoteStyle.Csv, true), {"Value.3.1", "Value.3.2"}),
+    #"Changed Type2" = Table.TransformColumnTypes(#"Split Column by Delimiter1",{{"Value.3.1", type text}, {"Value.3.2", type text}}),
+    #"Split Column by Delimiter2" = Table.SplitColumn(#"Changed Type2", "Value.8", Splitter.SplitTextByEachDelimiter({" "}, QuoteStyle.Csv, true), {"Value.8.1", "Value.8.2"}),
+    #"Changed Type3" = Table.TransformColumnTypes(#"Split Column by Delimiter2",{{"Value.8.1", type text}, {"Value.8.2", type text}}),
+    #"Removed Columns3" = Table.RemoveColumns(#"Changed Type3",{"Value.8.2", "Value.3.2"}),
+    #"Renamed Columns" = Table.RenameColumns(#"Removed Columns3",{{"Value.1", "Product"}, {"Value.3.1", "CutOff.Time"}, {"Value.4", "PickUp.Date"}, {"Value.6", "LastOrder.Time"}, {"Value.8.1", "Del.Time"}, {"Value.9", "Del.Date"}}),
+    #"Changed Type4" = Table.TransformColumnTypes(#"Renamed Columns",{{"PickUp.Date", type date}, {"Del.Date", type date}}),
+    #"Added Custom" = Table.AddColumn(#"Changed Type4", "TT", each [Del.Date]-[PickUp.Date]),
+    #"Changed Type5" = Table.TransformColumnTypes(#"Added Custom",{{"TT", Int64.Type}}),
+    #"Replaced Value1" = Table.ReplaceValue(#"Changed Type5","02","DOC",Replacer.ReplaceText,{"ShipType.Code"}),
+    #"Replaced Value2" = Table.ReplaceValue(#"Replaced Value1",null,"NDOC",Replacer.ReplaceValue,{"ShipType.Code"})
+in
+    #"Replaced Value2"
